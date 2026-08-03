@@ -4,8 +4,8 @@ import { dp, sp } from "../../helper/resolution";
 import BaseTitle from "../atom/title";
 import RawText from "../atom/text";
 import BaseButton from "../atom/button";
-import ShadowPanel from "../atom/shadow-panel";
-import t from "../../pre-start/i18n";
+import ShadowPanel from "../atom/shadowPanel";
+import { Image } from "expo-image";
 
 interface CardProps {
   /** image url */
@@ -21,7 +21,7 @@ interface CardProps {
   /** total number of activities */
   total: number;
   /** status of the card */
-  status: "completed" | "incomplete" | "locked";
+  status: "completed" | "incomplete" | "locked" | "ongoing";
   /** card button onPress handler */
   onPress: () => void;
 }
@@ -29,8 +29,10 @@ interface CardProps {
 const Container = styled(ShadowPanel)`
   background: ${(props) => props.theme.color.background};
   padding: ${dp(20)}px;
+  padding-top: ${dp(12)}px;
+  padding-bottom: ${dp(15)}px;
   border-radius: ${dp(10)}px;
-  margin-bottom: ${dp(20)}px;
+  margin-bottom: ${dp(24)}px;
   font-family: ${(props) => props.theme.fontFamily.textBold};
   font-weight: bold;
   min-height: ${dp(160)}px;
@@ -43,6 +45,7 @@ const Header = styled.View`
 `;
 
 const Title = styled(BaseTitle)`
+  color: #585858;
   font-size: ${sp(16)}px;
   flex: 3;
 `;
@@ -71,35 +74,39 @@ const ContentContainer = styled.View`
   flex-flow: row;
   justify-content: flex-start;
   align-items: center;
-  margin-top: ${dp(13)}px;
+  margin-top: ${dp(5)}px;
   border-top-color: ${(props) => props.theme.color.hr};
   border-top-width: 1px;
-  padding-top: ${dp(8)}px;
+  padding-top: ${dp(16)}px;
+  padding-bottom: ${dp(5)}px;
   flex: 1;
-`;
-
-const Icon = styled.Image`
-  flex: 1;
-  width: 100%;
-  height: 100%;
 `;
 
 const ContentRightContainer = styled.View`
+  min-width: ${10}%;
   flex-flow: column;
   text-align: center;
   align-items: center;
   justify-content: center;
   flex: 2;
-  margin-left: ${dp(20)}px;
+  margin-left: ${dp(24)}px;
 `;
 
 const Description = styled(RawText)`
+  font-family: ${(props) => props.theme.fontFamily.text};
   font-size: ${sp(10)}px;
   text-align: center;
 `;
 
 const Button = styled(BaseButton)`
   width: 100%;
+  font-size: ${sp(14)}px;
+`;
+
+const Icon = styled(Image)`
+  flex: 1.5;
+  width: 100%;
+  height: 100%;
 `;
 
 /** Card is a component that displays the summarized information of a group
@@ -111,35 +118,32 @@ const Card: React.VoidFunctionComponent<CardProps> = (props) => {
         <Title>{props.title}</Title>
         {
           {
-            completed: <PercentText>{t("Completed")}</PercentText>,
-            incomplete: (
+            ongoing: (
               <ProgressContainer>
                 <ProgressText>
                   {props.progress}/{props.total}
                   {" | "}
                 </ProgressText>
                 <PercentText>
-                  {Math.round((100 * props.progress) / props.total)}% {t("completed")}
+                  {Math.round((100 * props.progress) / props.total)}%{" "}
+                  {"concluído"}
                 </PercentText>
               </ProgressContainer>
             ),
-            locked: <BlockedText>{t("Locked")}</BlockedText>,
+            completed: <PercentText>{"Completo"}</PercentText>,
+            incomplete: <PercentText>{"Não Iniciado"}</PercentText>,
+            locked: <BlockedText>{"Bloqueado"}</BlockedText>,
           }[props.status || "locked"]
         }
       </Header>
       <ContentContainer>
-        <Icon
-          source={{ uri: props.image }}
-          accessibilityLabel={props.imageAlt}
-          style={{}}
-          resizeMode="contain"
-        />
+        <Icon source={props.image} alt={props.imageAlt} contentFit="contain" />
         <ContentRightContainer>
-          <Description>
-            {props.description}
-          </Description>
-          {props.status == "incomplete" && (
-            <Button label={t("Start")} onPress={props.onPress} />
+          <Description>{props.description}</Description>
+          {(props.status == "incomplete" ||
+            props.status == "completed" ||
+            props.status == "ongoing") && (
+            <Button label={"Iniciar Atividade"} onPress={props.onPress} />
           )}
         </ContentRightContainer>
       </ContentContainer>

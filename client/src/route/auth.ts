@@ -4,6 +4,14 @@ export type AuthProps = {
   Register: undefined;
   Login: undefined;
   Main: undefined;
+  ForgotPass: undefined;
+  ResetPass: {
+    email: string;
+    code: string;
+  };
+  ValidateCode: {
+    email: string;
+  }
   Onboarding: undefined;
 };
 

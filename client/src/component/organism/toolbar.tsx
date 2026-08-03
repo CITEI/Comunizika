@@ -1,9 +1,11 @@
 import { Image } from "react-native";
-import React, { useCallback } from "react";
+import React, { useCallback, useEffect } from "react";
 import styled from "../../pre-start/themes";
-import { dp, vw } from "../../helper/resolution";
-import ToolbarButton from "../atom/toolbar-button";
-import logo from "../../../assets/logo_2.png";
+import { dp, vw } from '../../helper/resolution';
+import Icon from '@expo/vector-icons/Feather';
+import logo from "../../../assets/logo.png";
+import { useAppDispatch } from "../../store/store";
+import { resetStreak, disableBoxLoaded } from "../../store/progress";
 import { useNavigation } from "@react-navigation/native";
 import { GameNavigatorProps } from "../../route/game";
 
@@ -11,13 +13,15 @@ interface ToolbarProps {
   /** Enables the account button */
   accountButton: boolean;
   /** Enables the close button */
-  closeButton: boolean;
+  closeAction?: () => void;
   /** Adds shadow under the toolbar */
   shadow: boolean;
   /** Enables the logo icon */
   logo: boolean;
   /** Number of navigation stack pops */
   popCount?: number;
+  /** Function to handle a modal that closes activity */
+  shouldQuit?: boolean;
 }
 
 const Container = styled.View`
@@ -45,34 +49,33 @@ const Spacer = styled.View`
 /** Component that stays at the topmost part of the screen */
 const Toolbar: React.FunctionComponent<ToolbarProps> = (props) => {
   const navigation = useNavigation<GameNavigatorProps>();
-
+  const dispatch = useAppDispatch();
   /** Transports the user to the settings screen */
   const handleAccountPress = useCallback(() => {
     navigation.navigate("Settings");
   }, []);
 
   /** Returns the user to the previous screen */
-  const handleClosePress = useCallback(() => {
-    navigation.pop(props.popCount || 1);
-  }, [props.popCount]);
+  useEffect(() => {
+    if (props.shouldQuit) {
+      dispatch(resetStreak());
+      dispatch(disableBoxLoaded());
+      navigation.pop(props.popCount || 1);
+    }
+  }, [props.shouldQuit]);
 
   return (
     <Container>
       <Shadow
-        style={
-          props.shadow
-            ? {
-                elevation: dp(5),
-              }
-            : {}
-        }
+        style={ props.shadow ? {elevation: dp(5)} : {}}
       >
         {props.accountButton ? (
-          <ToolbarButton
+          <Icon
+            size={dp(20)}
             name="user"
             style={{ color: "#8E8E8E" }}
             onPress={handleAccountPress}
-          ></ToolbarButton>
+          ></Icon>
         ) : (
           <Spacer></Spacer>
         )}
@@ -88,12 +91,13 @@ const Toolbar: React.FunctionComponent<ToolbarProps> = (props) => {
         ) : (
           <Spacer></Spacer>
         )}
-        {props.closeButton ? (
-          <ToolbarButton
+        {props.closeAction ? (
+          <Icon
             name="x-circle"
             style={{ color: "#FF867A" }}
-            onPress={handleClosePress}
-          ></ToolbarButton>
+            onPress={props.closeAction}
+            size={dp(20)}
+          ></Icon>
         ) : (
           <Spacer></Spacer>
         )}

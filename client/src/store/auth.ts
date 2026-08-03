@@ -2,42 +2,56 @@ import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import api, { setToken } from "../helper/api";
 import store from "./store";
 import { saveToken } from "../helper/settings";
-import { StatusCodes } from "http-status-codes";
 import { AxiosError } from "axios";
+import { ErrorNames } from "../helper/error";
 
-const ERROR_MESSAGES = {
-  [StatusCodes.NOT_FOUND]: "User not found",
-};
-const GENERIC_MESSAGE = "Invalid credentials";
+export interface UserI {
+  name: string;
+  email: string;
+  password: string;
+  disabilities: string[];
+  user: string;
+}
+
+export interface ParentI extends UserI {
+  relationship: string;
+  region: string;
+  birth: Date;
+}
+
+export interface EducatorI extends UserI {
+  school: string;
+  numberOfDisabledStudents: number;
+}
 
 export const login = createAsyncThunk<
   void,
   { email: string; password: string },
-  { rejectValue: string }
+  { rejectValue: ErrorNames }
 >("auth/login", async (user, { rejectWithValue }) => {
-  try{
+  try {
     const res = await api.post("/auth", user);
     const token = res.data;
     setToken(token);
     await saveToken(token);
   } catch (error) {
     const err = error as AxiosError;
-    return rejectWithValue(ERROR_MESSAGES[err.response!.status] || GENERIC_MESSAGE);
+    return rejectWithValue("InvalidCredentials");
   }
 });
 
-export const register = createAsyncThunk(
-  "auth/register",
-  async (user: {
-    email: string;
-    password: string;
-    guardian: string;
-    relationship: string;
-    birth: string;
-    region: string;
-    comorbidity: string[];
-  }) => {
-    await api.post("/auth/register", user);
+export const registerParent = createAsyncThunk(
+  "auth/register/parent",
+  async (user: ParentI) => {
+    await api.post("/auth/register/parent", user);
+    store.dispatch(login({ email: user.email, password: user.password }));
+  }
+);
+
+export const registerEducator = createAsyncThunk(
+  "auth/register/educator",
+  async (user: EducatorI) => {
+    await api.post("/auth/register/educator", user);
     store.dispatch(login({ email: user.email, password: user.password }));
   }
 );
@@ -54,10 +68,68 @@ export const fetchDisabilities = createAsyncThunk(
   }
 );
 
+interface ResetPassInput {
+  email: string;
+  token: string;
+  password?: string;
+}
+
+export const resetpass = createAsyncThunk<
+  number,
+  ResetPassInput,
+  { rejectValue: ErrorNames }
+>(
+  "auth/reset-password/",
+  async ({ email, token, password }, { rejectWithValue }) => {
+    try {
+      const data = await api.post("/auth/reset-password/", {
+        email,
+        token,
+        password,
+      });
+      return data.status;
+    } catch (err) {
+      return rejectWithValue("InvalidCredentials");
+    }
+  }
+);
+
+export const sendcode = createAsyncThunk<
+  number,
+  string,
+  { rejectValue: ErrorNames }
+>("/auth/passreset/sendcode", async (email, { rejectWithValue }) => {
+  try {
+    const data = await api.post("/auth/reset-password/send", { email });
+    return data.status;
+  } catch (err) {
+    return rejectWithValue("EmailNotFound");
+  }
+});
+
+export const codeverify = createAsyncThunk<
+  number,
+  ResetPassInput,
+  { rejectValue: ErrorNames }
+>(
+  "auth/reset-password/validate",
+  async ({ email, token }, { rejectWithValue }) => {
+    try {
+      const data = await api.post("/auth/reset-password/validate", {
+        email,
+        token,
+      });
+      return data.status;
+    } catch (err) {
+      return rejectWithValue("InvalidToken");
+    }
+  }
+);
+
 interface InitialState {
   authentication: {
     status: boolean;
-    message: string;
+    message: string | number;
   };
   disabilities: Disability[];
 }
@@ -71,15 +143,18 @@ export default createSlice({
   extraReducers: (builder) => {
     builder.addCase(login.fulfilled, (state) => {
       state.authentication = { ...state.authentication, status: true };
-    }),
-      builder.addCase(login.rejected, (state, action) => {
-        state.authentication = {
-          ...state.authentication,
-          status: false,
-          message: action.payload as string,
-        };
-      });
-    builder.addCase(register.rejected, (state) => {
+    });
+    builder.addCase(login.rejected, (state, action) => {
+      state.authentication = {
+        ...state.authentication,
+        status: false,
+        message: action.payload!,
+      };
+    });
+    builder.addCase(registerParent.rejected, (state) => {
+      state.authentication = { ...state.authentication, status: false };
+    });
+    builder.addCase(registerEducator.rejected, (state) => {
       state.authentication = { ...state.authentication, status: false };
     });
     builder.addCase(fetchDisabilities.fulfilled, (state, action) => {

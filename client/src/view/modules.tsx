@@ -1,48 +1,42 @@
-import React, { useCallback, useEffect } from "react";
-import { ModuleItem } from "../store/game-data";
+import React, { useCallback } from "react";
 import { useNavigation } from "@react-navigation/native";
 import { GameNavigatorProps } from "../route/game";
 import Cards from "../component/templates/cards";
-import t from "../pre-start/i18n";
-import useModules from "../hooks/usemodules";
-import useUserModule from "../hooks/useusermodule";
-
-interface ModulesProps {}
+import useModules from "../hooks/useModules";
+import { Module } from "../store/modules";
+import useAnswers from "../hooks/useAnswers";
+import { disableBoxLoaded } from "../store/progress";
+import { useAppDispatch } from "../store/store";
 
 /** Screen that displays a list of modules */
-const Modules: React.VoidFunctionComponent<ModulesProps> = () => {
+const Modules: React.VoidFunctionComponent = () => {
   const navigation = useNavigation<GameNavigatorProps>();
   const modules = useModules();
-  const module = useUserModule();
-  const index = modules.findIndex((el) => el._id == module?._id);
+  const answers = useAnswers();
+  const dispatch = useAppDispatch();
 
-  /** Navigates to the stages screen og a given module */
-  const handleItemPress = useCallback((module: ModuleItem) => {
-    navigation.navigate("Stages", { moduleId: module._id });
-  }, [modules]);
+  /** Goes to the game screen */
+  const handlePress = useCallback(
+    (selection: Module) => {
+      dispatch(disableBoxLoaded());
+      navigation.navigate("Transition", {
+        module: selection,
+      });
+    },
+    [modules]
+  );
 
-  /** Skips this screen if it contains only one module */
-  const skip = useCallback(() => {
-    if (modules.length == 1)
-      handleItemPress(modules[0])
-  }, [modules])
-
-  useEffect(() => {
-    navigation.addListener("focus", skip);
-    skip();
-  }, [modules])
-
-  return (modules.length > 1 && module) ? (
+  return modules ? (
     <Cards
-      title={t("Modules")}
-      unit={t("module")}
-      onPress={handleItemPress}
+      title={"Atividades"}
+      unit={"módulo"}
+      onPress={handlePress}
+      answers={answers}
       data={modules}
-      current={index}
-      progress={0}
-      total={1}
     />
-  ) : <></>;
+  ) : (
+    <></>
+  );
 };
 
 export default Modules;

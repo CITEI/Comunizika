@@ -4,13 +4,15 @@ import { configureStore } from "@reduxjs/toolkit";
 import { TypedUseSelectorHook, useDispatch } from "react-redux";
 import { useSelector } from "react-redux";
 import auth from "./auth";
-import gameData from "./game-data";
 import user from "./user";
+import modules from './modules';
+import progress from './progress';
 
 export const rootReducer = combineReducers({
   auth: auth.reducer,
-  gameData: gameData.reducer,
-  user: user.reducer
+  user: user.reducer,
+  modules: modules.reducer,
+  progress: progress.reducer,
 });
 
 const store = configureStore({

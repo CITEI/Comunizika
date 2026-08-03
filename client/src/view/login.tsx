@@ -1,21 +1,19 @@
 import React, { useCallback, useEffect, useState } from "react";
-import VerticalContainer from "../component/atom/vertical-container";
+import VerticalContainer from "../component/atom/verticalContainer";
 import { useAppDispatch, useAppSelector } from "../store/store";
-import auth, { login } from "../store/auth";
+import { login } from "../store/auth";
 import { useNavigation } from "@react-navigation/native";
 import { AuthNavigatorProps } from "../route/auth";
-import Modal from "../component/molecule/modal";
-import MainContainer from "../component/atom/main-container";
-import ContentContainer from "../component/atom/content-container";
-import t from "../pre-start/i18n";
-import LoginHeader from "../component/organism/login-header";
+import MainContainer from "../component/atom/mainContainer";
+import ContentContainer from "../component/atom/contentContainer";
+import LoginHeader from "../component/organism/loginHeader";
 import Form from "../component/organism/form";
 import { isEmail, isPassword } from "../helper/validators";
-import TextLink from "../component/molecule/text-link";
-import { Linking } from "react-native";
-import { AUTHOR_EMAIL } from "../pre-start/constants";
+import TextLink from "../component/molecule/textLink";
 import { loadToken } from "../helper/settings";
 import { fetchUserData } from "../store/user";
+import { isOnboardingComplete } from "../helper/settings";
+import ErrorModal from "../component/organism/errorModal";
 
 export interface LoginProps {}
 
@@ -23,20 +21,23 @@ const Login: React.VoidFunctionComponent<LoginProps> = (props) => {
   const navigation = useNavigation<AuthNavigatorProps>();
   const dispatch = useAppDispatch();
   const authentication = useAppSelector((state) => state.auth.authentication);
-  const storageAuth = useAppSelector((state) => state.user.flags.info);
+  const storageAuth = useAppSelector((state) => state.user.loaded);
   const [validated, setValidated] = useState(false);
-  const [modalText, setModalText] = useState("");
+  const [error, setError] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     loadToken().then(() => {
       dispatch(fetchUserData());
-    })
+    });
   }, []);
 
   useEffect(() => {
     if (authentication.status || storageAuth) {
-      navigation.navigate("Onboarding");
-    } else setModalText(authentication.message || "");
+      isOnboardingComplete().then((completed) => {
+        if (completed) navigation.navigate("Main");
+        else navigation.navigate("Onboarding");
+      });
+    } else setError(authentication.message ?? "");
   }, [authentication, storageAuth]);
 
   const handleChange = useCallback(
@@ -61,31 +62,38 @@ const Login: React.VoidFunctionComponent<LoginProps> = (props) => {
     navigation.navigate("Register");
   };
 
+  const handleForgot = () => {
+    navigation.navigate("ForgotPass");
+  };
+
+  function clearError() {
+    setError(undefined);
+  }
+
   return (
     <MainContainer>
       <ContentContainer>
-        <Modal
-          text={t(modalText)}
-          title={t("Not logged! :(")}
-          onRequestClose={useCallback(() => setModalText(""), [])}
-          visible={Boolean(modalText)}
-        ></Modal>
+        <ErrorModal
+          visible={!!error}
+          close={clearError}
+          errorMessage={error!}
+        />
         <LoginHeader />
         <VerticalContainer>
           <Form
             inputs={[
-              { type: "text", label: t("Email"), name: "email" },
-              { type: "password", label: t("Password"), name: "password" },
+              { type: "text", label: "Email", name: "email" },
+              { type: "password", label: "Senha", name: "password" },
               {
                 type: "submit",
-                label: t("Login"),
+                label: "Entrar",
                 name: "login",
                 onSubmit: handleLogin,
                 disabled: !validated,
               },
               {
                 type: "button",
-                label: t("Create account"),
+                label: "Criar conta",
                 name: "register",
                 onPress: handleRegister,
               },
@@ -93,13 +101,9 @@ const Login: React.VoidFunctionComponent<LoginProps> = (props) => {
             onChange={handleChange}
           />
           <TextLink
-            text={t("Forgot the password?") + " "}
-            link={t("Click here")}
-            onPress={() => {
-              Linking.openURL(
-                `mailto:${AUTHOR_EMAIL}?subject=Password%20reset`
-              );
-            }}
+            text={"Esqueceu a senha?" + " "}
+            link={"Clique aqui"}
+            onPress={handleForgot}
           />
         </VerticalContainer>
       </ContentContainer>

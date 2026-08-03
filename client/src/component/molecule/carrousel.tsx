@@ -1,10 +1,10 @@
 import { dp } from "../../helper/resolution";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import styled from "../../pre-start/themes";
-import IconButton from "../atom/icon-button";
-import AudioButton from "../atom/audio-button";
-import { TouchableOpacity } from "react-native";
-import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import IconButton from "../atom/iconButton";
+import AudioButton from "../atom/audioButton";
+import { TouchableOpacity, View } from "react-native";
+import { Image } from "expo-image";
 
 interface CarrouselProps {
   /** slides definition */
@@ -15,8 +15,11 @@ interface CarrouselProps {
     imageAlt?: string;
     /** audio uri */
     audio?: string;
+    uniqueText?: string;
+    sideBySide?: boolean;
   }[];
-  preview?: boolean;
+  text: string;
+  setText: (newText: string) => void;
 }
 
 const Container = styled.View`
@@ -38,35 +41,27 @@ const Arrow = styled(IconButton)`
 `;
 
 const Content = styled.View`
+  height: 80%;
   flex: 1;
   flex-flow: column;
   align-items: center;
   justify-content: center;
-  padding-bottom: ${dp(10)}px;
-  padding-top: ${dp(5)}px;
 `;
 
-const Image = styled.Image`
-  flex: 2;
+const SideBySide = styled.View`
+  flex: 1;
+  flex-direction: row;
+  height: 80%;
+  gap: 10px;
+`;
+
+const StyledImage = styled(Image)`
   width: 100%;
   height: 100%;
-  margin-top: ${dp(5)}px;
-  margin-bottom: ${dp(5)}px;
-`;
-
-const Preview = styled(TouchableOpacity)`
-  width: 100%;
-`;
-
-const Icon = styled(Image)`
-  max-width: 30%;
   flex: 1;
-  margin-left: ${dp(5)}px;
-  margin-right: ${dp(5)}px;
-`
+`;
 
-const Carrousel: React.VoidFunctionComponent<CarrouselProps> = (props) => {
-  const [preview, setPreview] = useState<boolean>(props.preview || false);
+function Carrousel(props: CarrouselProps) {
   const [index, setIndex] = useState(0);
 
   const data = props.slides;
@@ -83,39 +78,53 @@ const Carrousel: React.VoidFunctionComponent<CarrouselProps> = (props) => {
     else setIndex(index - 1);
   }, [index]);
 
-  const handlePreview = useCallback(() => {
-    setPreview(false);
-  }, [preview]);
+  useEffect(() => {
+    props.setText(props.text.replace("$uniqueText", current.uniqueText ?? ""));
+  }, [current]);
 
   return (
     <Container>
-      {preview ? (
-        <Preview onPress={handlePreview}>
-          {props.slides.filter(el => "image" in el).map((el, i) => (
-            <Container key={i}>
-              <Icon source={{ uri: el.image }} resizeMode="contain" />
-              {el.audio && <AudioButton audio={el.audio} />}
-            </Container>
-          ))}
-        </Preview>
+      <Arrow icon="caretleft" onPress={handlePrevious} />
+      {current.sideBySide ? (
+        <SideBySide>
+          {current.image && (
+            <StyledImage source={current.image} contentFit="contain" />
+          )}
+          {current.audio && (
+            <View
+              style={{
+                flex: 1,
+                justifyContent: "center",
+              }}
+            >
+              <AudioButton audio={current.audio} iconSize={"big"} />
+            </View>
+          )}
+        </SideBySide>
       ) : (
-        <>
-          <Arrow icon="caretleft" onPress={handlePrevious} />
-          <Content>
-            {current.image && (
-              <Image
-                source={{ uri: current.image }}
-                resizeMode="contain"
-                accessibilityHint={current.imageAlt}
-              />
-            )}
-            {current.audio && <AudioButton audio={current.audio} />}
-          </Content>
-          <Arrow icon="caretright" onPress={handleNext} />
-        </>
+        //TODO: algumas imagens precisam tocar embaixo
+        <Content style={{
+          height: "85%",
+          alignSelf: "center"
+        }}>
+          {current.image && (
+            <StyledImage
+              source={current.image}
+              contentFit="contain"
+              style={{ marginBottom: current.audio ? dp(5) : 0 }}
+            />
+          )}
+          {current.audio && (
+            <AudioButton
+              audio={current.audio}
+              iconSize={current.image ? "normal" : "big"}
+            />
+          )}
+        </Content>
       )}
+      <Arrow icon="caretright" onPress={handleNext} />
     </Container>
   );
-};
+}
 
 export default Carrousel;

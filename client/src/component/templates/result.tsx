@@ -1,7 +1,7 @@
 import React, { useCallback } from "react";
-import { StageItem } from "../../store/game-data";
-import MainContainer from "../atom/main-container";
-import ContentContainer from "../atom/content-container";
+import { Module } from "../../store/modules";
+import MainContainer from "../atom/mainContainer";
+import ContentContainer from "../atom/contentContainer";
 import Toolbar from "../organism/toolbar";
 import styled from "../../pre-start/themes";
 import BaseTitle from "../atom/title";
@@ -10,13 +10,16 @@ import { dp, sp } from "../../helper/resolution";
 import Button from "../atom/button";
 import { useNavigation } from "@react-navigation/native";
 import { GameNavigatorProps } from "../../route/game";
-import util from "util";
-import t from "../../pre-start/i18n";
-import { EvaluateStatus } from "../../store/user";
+import useModules from "../../hooks/useModules";
+import { useAppDispatch, useAppSelector } from "../../store/store";
+import { addToStreak, resetStreak } from "../../store/progress";
+import { resetModules } from "../../store/modules";
+import { Image } from "expo-image";
+import img from "../../../assets/finalatividade.png";
 
 interface ResultProps {
-  stage: StageItem;
-  status: EvaluateStatus | "ended";
+  module: Module;
+  grade: number;
 }
 
 const Container = styled(ContentContainer)`
@@ -26,84 +29,90 @@ const Container = styled(ContentContainer)`
 `;
 
 const Title = styled(BaseTitle)`
-  font-size: ${sp(20)}px;
+  font-size: ${sp(24)}px;
   text-align: center;
 `;
 
-const Image = styled.Image`
+const Icon = styled(Image)`
   width: ${dp(180)}px;
   height: ${dp(180)}px;
-  margin-bottom: ${dp(20)}px;
-  margin-top: ${dp(40)}px;
+  margin-bottom: ${dp(19)}px;
+  margin-top: ${dp(37)}px;
 `;
 
 const Text = styled(BaseText)`
-  font-family: ${(props) => props.theme.fontFamily.titleLight};
+  font-family: ${(props) => props.theme.fontFamily.text};
   font-size: ${sp(16)}px;
   text-align: center;
-  margin-bottom: ${dp(20)}px;
+  margin-top: ${dp(10)}px;
+  margin-bottom: ${dp(16)}px;
 `;
 
 const Footer = styled.View`
   width: 100%;
 `;
 
-const TITLE_MESSAGES: {[key in ResultProps["status"]]: string} = {
-  "approved": t("You made to %s!"),
-  "ended": t("You finished %s"),
-  "reproved": t("Let's reinforce %s again"),
-};
-
-const CONTENT_MESSAGES: {[key in ResultProps["status"]]: string} = {
-  "approved": t("StageSucceeded"),
-  "ended": t("NoContent"),
-  "reproved": t("StageFailed"),
-};
-
 /** Templated result screen */
 const Result: React.VoidFunctionComponent<ResultProps> = (props) => {
   const navigation = useNavigation<GameNavigatorProps>();
+  const modules = useModules();
+  const activityStreak = useAppSelector(
+    (state) => state.progress.activityStreak
+  );
+  const approved = useAppSelector((state) => state.progress.grade)! > 0.5;
+  const dispatch = useAppDispatch();
+  const next = modules.find((el) => el.previous === props.module.id);
 
   /** Goes back to the modules screen */
   const handleBack = useCallback(() => {
-    navigation.pop(2);
+    navigation.pop(2 + activityStreak);
+    dispatch(resetModules());
+    dispatch(resetStreak());
+  }, []);
+
+  const handleReinforcement = useCallback(() => {
+    dispatch(addToStreak());
+    navigation.replace("Transition", { module: props.module });
   }, []);
 
   /** Goes to the activities page of the next box */
   const handleNext = useCallback(() => {
-    navigation.replace("Game");
+    dispatch(addToStreak());
+    navigation.replace("Transition", { module: next! });
   }, []);
+
+  const buttons = [
+    next ? (
+      <Button
+        variant={approved ? undefined : "outline"}
+        label={"Próximo módulo"}
+        onPress={handleNext}
+      />
+    ) : (
+      <></>
+    ),
+    <Button
+      variant={approved && next ? "outline" : undefined}
+      label={approved ? "Refazer módulo atual" : "Reforçar módulo atual"}
+      onPress={handleReinforcement}
+    />,
+  ];
 
   return (
     <MainContainer>
-      <Toolbar
-        accountButton={false}
-        closeButton={false}
-        logo={true}
-        shadow={false}
-      />
+      <Toolbar accountButton={true} logo={true} shadow={true} />
       <Container>
-        <Title>
-          {util.format(
-            TITLE_MESSAGES[props.status],
-            props.stage.name
-          )}
-        </Title>
-        <Image
-          source={{ uri: props.stage.image }}
-          accessibilityHint={props.stage.imageAlt}
-          resizeMode="contain"
-        />
-        <Text>{CONTENT_MESSAGES[props.status]}</Text>
+        <Icon source={img} alt={props.module.image} contentFit="contain" />
+        <Title>{`Parabéns!`}</Title>
+        <Text>
+          {approved
+            ? "Você concluiu o módulo!"
+            : "Que legal, você concluiu o módulo! Que tal rever alguns conceitos?"}
+        </Text>
         <Footer>
-          {props.status != "ended" && (
-            <Button label={t("Start next")} onPress={handleNext} />
-          )}
-          <Button
-            variant="outline"
-            label={t("Back to menu")}
-            onPress={handleBack}
-          />
+          {approved ? buttons[0] : buttons[1]}
+          {approved ? buttons[1] : buttons[0]}
+          <Button variant="outline" label={"Atividades"} onPress={handleBack} />
         </Footer>
       </Container>
     </MainContainer>
